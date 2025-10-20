@@ -131,3 +131,42 @@ spec:
         }
     }
 }
+post {
+    failure {
+        script {
+            withCredentials([
+                string(credentialsId: 'JIRA_EMAIL', variable: 'JIRA_USER'),
+                string(credentialsId: 'JIRA_API_TOKEN', variable: 'JIRA_TOKEN')
+            ]) {
+                def jiraBaseUrl = "https://one-atlas-qmay.atlassian.net"
+                def projectKey = "GRP14"
+                def jobName = env.JOB_NAME
+                def buildNumber = env.BUILD_NUMBER
+                def buildUrl = env.BUILD_URL
+                def summary = "Jenkins Build Failed: ${jobName} #${buildNumber}"
+                def description = "Build URL: ${buildUrl}\n\nCheck the logs for more information."
+
+                def issuePayload = /{
+                  "fields": {
+                    "project": {
+                      "key": "${projectKey}"
+                    },
+                    "summary": "${summary}",
+                    "description": "${description}",
+                    "issuetype": {
+                      "name": "Bug"
+                    }
+                  }
+                }/
+
+                sh """
+                    curl -X POST \
+                      -u "$JIRA_USER:$JIRA_TOKEN" \
+                      -H "Content-Type: application/json" \
+                      --data '${issuePayload}' \
+                      ${jiraBaseUrl}/rest/api/2/issue/
+                """
+            }
+        }
+    }
+}
